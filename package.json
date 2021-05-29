@@ -1,0 +1,20 @@
+{
+  "name": "aod-portfolio-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "David Oluseun",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "googleapis": "^74.2.0",
+    "joi": "^17.4.0",
+    "nodemailer": "^6.6.0"
+  }
+}
