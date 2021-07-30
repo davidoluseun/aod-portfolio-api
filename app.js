@@ -13,47 +13,53 @@ const PORT = process.env.PORT || 3900;
 app.use(cors({ origin: true }));
 app.use(bodyParser.json());
 
-const oauth2Client = new OAuth2(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  "https://developers.google.com/oauthplayground"
-);
-
-oauth2Client.setCredentials({
-  refresh_token: process.env.REFRESH_TOKEN,
-});
-
-const accessToken = oauth2Client.getAccessToken();
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    type: "OAuth2",
-    user: process.env.EMAIL,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    refreshToken: process.env.REFRESH_TOKEN,
-    accessToken: accessToken,
-  },
+const schema = Joi.object().keys({
+  name: Joi.string().trim().required(),
+  email: Joi.string().trim().email().required(),
+  subject: Joi.string().trim().allow(""),
+  phone: Joi.string()
+    .trim()
+    .regex(/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/)
+    .allow(""),
+  message: Joi.string().trim().required(),
 });
 
 app.post("/mail", (req, res) => {
   const data = req.body;
 
-  const schema = Joi.object().keys({
-    name: Joi.string().trim().required(),
-    email: Joi.string().trim().email().required(),
-    subject: Joi.string().trim().allow(""),
-    phone: Joi.string()
-      .trim()
-      .regex(/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/)
-      .allow(""),
-    message: Joi.string().trim().required(),
+  const { error } = schema.validate(data);
+  if (error) return res.json({ message: "INVALID" });
+
+  const oauth2Client = new OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground"
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.REFRESH_TOKEN,
   });
 
-  const { error } = schema.validate(data);
+  google.options({ auth: oauth2Client });
 
-  if (error) return res.json({ message: "INVALID" });
+  const accessToken = new Promise((resolve, reject) => {
+    oauth2Client.getAccessToken((err, token) => {
+      if (err) return res.json({ message: "FAIL" });
+      else resolve(token);
+    });
+  });
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: process.env.EMAIL,
+      clientId: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      refreshToken: process.env.REFRESH_TOKEN,
+      accessToken: accessToken,
+    },
+  });
 
   const mail = {
     from: data.name,
